@@ -138,6 +138,18 @@ void screen_put_string(Screen *screen, int x, int y, const char *text, unsigned 
     }
 }
 
+void screen_put_string_center(Screen *screen, int y, const char *text, unsigned char fg, unsigned char bg, unsigned short attr) {
+    int text_width = (int)strlen(text);
+    int x = (SCREEN_WIDTH - text_width) / 2;
+    screen_put_string(screen, x, y, text, fg, bg, attr);
+}
+
+void screen_put_string_right(Screen *screen, int right_x, int y, const char *text, unsigned char fg, unsigned char bg, unsigned short attr) {
+    int text_width = (int)strlen(text);
+    int x = right_x - text_width + 1;
+    screen_put_string(screen, x, y, text, fg, bg, attr);
+}
+
 void screen_draw_box(Screen *screen, int x, int y, int w, int h, unsigned char fg, unsigned char bg, unsigned short attr) {
     int i;
 

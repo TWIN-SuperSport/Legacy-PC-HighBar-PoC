@@ -47,6 +47,8 @@ void screen_shutdown(Screen *screen);
 void screen_clear(Screen *screen, unsigned char ch, unsigned char fg, unsigned char bg, unsigned short attr);
 void screen_put_char(Screen *screen, int x, int y, unsigned char ch, unsigned char fg, unsigned char bg, unsigned short attr);
 void screen_put_string(Screen *screen, int x, int y, const char *text, unsigned char fg, unsigned char bg, unsigned short attr);
+void screen_put_string_center(Screen *screen, int y, const char *text, unsigned char fg, unsigned char bg, unsigned short attr);
+void screen_put_string_right(Screen *screen, int right_x, int y, const char *text, unsigned char fg, unsigned char bg, unsigned short attr);
 void screen_draw_box(Screen *screen, int x, int y, int w, int h, unsigned char fg, unsigned char bg, unsigned short attr);
 void screen_present(Screen *screen);
 

@@ -22,6 +22,9 @@ typedef enum {
 typedef struct {
     GameMode mode;
     bool accelerating;
+    bool title_screen;
+    bool start_blink;
+    Uint32 blink_started_at;
     double theta;
     double omega;
     double radius;
@@ -55,11 +58,20 @@ static void update_attached_position(GameState *game) {
 static void reset_game(GameState *game) {
     memset(game, 0, sizeof(*game));
     game->mode = STATE_READY;
+    game->title_screen = false;
+    game->start_blink = false;
+    game->blink_started_at = 0;
     game->theta = 0.0;
     game->omega = 0.0;
     game->radius = 2.0;
     update_attached_position(game);
     set_message(game, "SPACE start spin / release. R reset.");
+}
+
+static void reset_to_title(GameState *game) {
+    reset_game(game);
+    game->title_screen = true;
+    set_message(game, "Push space bar,then game start");
 }
 
 static void release_flyer(GameState *game) {
@@ -76,6 +88,34 @@ static void draw_ground(Screen *screen) {
     }
 }
 
+static void draw_title(Screen *screen) {
+    int box_w = 46;
+    int box_h = 11;
+    int box_x = (SCREEN_WIDTH - box_w) / 2;
+    int box_y = 5;
+
+    screen_clear(screen, ' ', COLOR_LIGHTGRAY, COLOR_BLACK, 0);
+    screen_draw_box(screen, box_x, box_y, box_w, box_h, COLOR_YELLOW, COLOR_BLUE, 0);
+    screen_put_string_center(screen, box_y + 1, "LEGACY PC HIGHBAR", COLOR_WHITE, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 2, box_y + 3, "RULE:", COLOR_LIGHTCYAN, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 8, box_y + 3, "Spin up and release for distance.", COLOR_WHITE, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 2, box_y + 5, "CONTROL:", COLOR_LIGHTCYAN, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 11, box_y + 5, "SPACE start/release  R reset", COLOR_WHITE, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 11, box_y + 6, "Q quit", COLOR_WHITE, COLOR_BLUE, 0);
+    screen_put_string_center(screen, box_y + 9, "Push space bar,then game start", COLOR_LIGHTGREEN, COLOR_BLUE, 0);
+}
+
+static void draw_start_blink(Screen *screen, Uint32 started_at) {
+    Uint32 elapsed = SDL_GetTicks() - started_at;
+    Uint32 phase = elapsed / 500;
+
+    screen_clear(screen, ' ', COLOR_LIGHTGRAY, COLOR_BLACK, 0);
+    if ((phase % 2) == 0) {
+        int y = GROUND_Y / 2;
+        screen_put_string_center(screen, y, "Let's spin!!", COLOR_YELLOW, COLOR_BLACK, 0);
+    }
+}
+
 static void draw_highbar(Screen *screen) {
     screen_put_char(screen, PIVOT_X, PIVOT_Y, 'O', COLOR_YELLOW, COLOR_BLACK, 0);
 }
@@ -85,6 +125,22 @@ static void draw_flyer(Screen *screen, const GameState *game) {
         int body_x = (int)lround(game->x);
         int body_y1 = (int)lround(game->y);
         int body_y2 = body_y1 + 1;
+        static const char *flip_frames[] = { "_|", "/\\", "|_", "\\/" };
+
+        if (game->mode == STATE_FLYING && body_y1 < GROUND_Y - 4) {
+            Uint32 frame = (SDL_GetTicks() / 80) % 4;
+            const char *sprite = flip_frames[frame];
+            int left_x = body_x - 1;
+            int right_x = body_x;
+
+            if (left_x >= 0 && left_x < SCREEN_WIDTH && body_y1 >= 0 && body_y1 < GROUND_Y) {
+                screen_put_char(screen, left_x, body_y1, (unsigned char)sprite[0], COLOR_WHITE, COLOR_BLACK, 0);
+            }
+            if (right_x >= 0 && right_x < SCREEN_WIDTH && body_y1 >= 0 && body_y1 < GROUND_Y) {
+                screen_put_char(screen, right_x, body_y1, (unsigned char)sprite[1], COLOR_WHITE, COLOR_BLACK, 0);
+            }
+            return;
+        }
 
         if (body_x >= 0 && body_x < SCREEN_WIDTH && body_y1 >= 0 && body_y1 < GROUND_Y) {
             screen_put_char(screen, body_x, body_y1, '|', COLOR_WHITE, COLOR_BLACK, 0);
@@ -234,7 +290,7 @@ int main(void) {
     Uint32 previous_ticks = 0;
     const char *font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
 
-    reset_game(&game);
+    reset_to_title(&game);
 
     if (screen_init(&screen, "Legacy-PC-HighBar-PoC", font_path, 14) != 0) {
         return 1;
@@ -257,6 +313,10 @@ int main(void) {
                     running = false;
                 } else if (key == SDLK_r) {
                     reset_game(&game);
+                } else if (game.title_screen && key == SDLK_SPACE) {
+                    reset_game(&game);
+                    game.start_blink = true;
+                    game.blink_started_at = SDL_GetTicks();
                 } else if (key == SDLK_SPACE && (game.mode == STATE_READY || game.mode == STATE_ATTACHED)) {
                     if (!game.accelerating) {
                         game.accelerating = true;
@@ -269,8 +329,18 @@ int main(void) {
             }
         }
 
-        update_game(&game, dt);
-        draw_scene(&screen, &game);
+        if (game.title_screen) {
+            draw_title(&screen);
+        } else if (game.start_blink) {
+            if (SDL_GetTicks() - game.blink_started_at >= 4000) {
+                game.start_blink = false;
+                screen_clear(&screen, ' ', COLOR_LIGHTGRAY, COLOR_BLACK, 0);
+            }
+            draw_start_blink(&screen, game.blink_started_at);
+        } else {
+            update_game(&game, dt);
+            draw_scene(&screen, &game);
+        }
         screen_present(&screen);
         SDL_Delay(16);
     }
