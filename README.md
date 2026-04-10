@@ -1,6 +1,7 @@
 # Legacy-PC-HighBar-PoC
 
 LPSE を使った高鉄棒ゲームの PoC です。
+注: LPSE は 80x25 の ANSI 風セル画面を描くための画面層です。
 
 ## Attention
 
