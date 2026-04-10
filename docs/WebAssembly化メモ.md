@@ -30,4 +30,6 @@
 ## 今の状態
 - Ubuntu ローカルブラウザで動作確認済み。
 - iPhone `RDP` 経由でも表示倍率を調整すればプレイ可能。
+- 試験公開先 `https://supersport-life.upper.jp/` でも動作確認済み。
+- 配信物は `index.html`, `highbar.js`, `highbar.wasm`, `highbar.data` の 4 ファイルを同一ディレクトリへ置く形で成立した。
 - 現時点の Web 版実装は、一時配置からの運用であり、本 repo への本格統合は今後の検討事項。

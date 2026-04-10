@@ -34,3 +34,9 @@ cmake --build build
 ```bash
 ./build/legacy-pc-highbar-poc
 ```
+
+## Web
+
+- `SDL2 + Emscripten` による Web 版の試験公開を確認済みです。
+- 試験公開先: `https://supersport-life.upper.jp/`
+- 詳細は `docs/WebAssembly化メモ.md` を参照してください。
