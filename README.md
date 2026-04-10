@@ -2,6 +2,19 @@
 
 LPSE を使った高鉄棒ゲームの PoC です。
 
+## Attention
+
+この repo だけで LPSE の画面コードは含んでいますが、`SDL2` と `SDL2_ttf` はシステム側に事前導入が必要です。
+
+## Dependencies
+
+Ubuntu 系では少なくとも次を先に入れてください。
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake ninja-build libsdl2-dev libsdl2-ttf-dev
+```
+
 ## Controls
 
 - `SPACE`: 1回目で回転開始、2回目でリリース
