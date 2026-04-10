@@ -216,7 +216,7 @@ static void draw_scene(Screen *screen, const GameState *game) {
 
     if (game->mode == STATE_LANDED) {
         char result[80];
-        snprintf(result, sizeof(result), "DISTANCE: %.1f  PRESS R TO RETRY", game->landed_distance);
+        snprintf(result, sizeof(result), "DISTANCE: %.2fm  PRESS R TO RETRY", game->landed_distance / 10.0);
         screen_put_string(screen, 18, 2, result, COLOR_YELLOW, COLOR_BLACK, 0);
     }
 
