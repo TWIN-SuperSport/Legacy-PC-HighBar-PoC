@@ -20,7 +20,8 @@ sudo apt install -y build-essential cmake ninja-build libsdl2-dev libsdl2-ttf-de
 
 - `SPACE`: 1回目で回転開始、2回目でリリース
 - `R`: リセット
-- `Q` / `Esc`: 終了
+- `Q`: タイトル画面へ戻る
+- `Esc`: 終了
 
 ## Build
 
@@ -39,4 +40,5 @@ cmake --build build
 
 - `SDL2 + Emscripten` による Web 版の試験公開を確認済みです。
 - 試験公開先: `https://supersport-life.upper.jp/`
+- iPhone / Android 系の touch-like browser では、画面下部に `[SPACE] [R] [Q]` の簡易キー UI を出すようにしています。
 - 詳細は `docs/WebAssembly化メモ.md` を参照してください。

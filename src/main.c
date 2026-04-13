@@ -65,7 +65,7 @@ static void reset_game(GameState *game) {
     game->omega = 0.0;
     game->radius = 2.0;
     update_attached_position(game);
-    set_message(game, "SPACE start spin / release. R reset.");
+    set_message(game, "SPACE spin/release. R reset. Q title.");
 }
 
 static void reset_to_title(GameState *game) {
@@ -101,7 +101,7 @@ static void draw_title(Screen *screen) {
     screen_put_string(screen, box_x + 8, box_y + 3, "Spin up and release for distance.", COLOR_WHITE, COLOR_BLUE, 0);
     screen_put_string(screen, box_x + 2, box_y + 5, "CONTROL:", COLOR_LIGHTCYAN, COLOR_BLUE, 0);
     screen_put_string(screen, box_x + 11, box_y + 5, "SPACE start/release  R reset", COLOR_WHITE, COLOR_BLUE, 0);
-    screen_put_string(screen, box_x + 11, box_y + 6, "Q quit", COLOR_WHITE, COLOR_BLUE, 0);
+    screen_put_string(screen, box_x + 11, box_y + 6, "Q title  ESC quit", COLOR_WHITE, COLOR_BLUE, 0);
     screen_put_string_center(screen, box_y + 9, "Push space bar,then game start", COLOR_LIGHTGREEN, COLOR_BLUE, 0);
 }
 
@@ -223,7 +223,7 @@ static void draw_scene(Screen *screen, const GameState *game) {
     snprintf(
         ui,
         sizeof(ui),
-        "SPACE spin/release  Q quit  R reset  ANG:%6.1f  SPD:%5.2f  %s",
+        "SPACE spin/release  Q title  R reset  ANG:%6.1f  SPD:%5.2f  %s",
         game->theta * 180.0 / M_PI,
         fabs(game->omega),
         game->message
@@ -309,9 +309,11 @@ int main(void) {
                 running = false;
             } else if (event.type == SDL_KEYDOWN) {
                 SDL_Keycode key = event.key.keysym.sym;
-                if (key == SDLK_q || key == SDLK_ESCAPE) {
+                if (key == SDLK_ESCAPE) {
                     running = false;
-                } else if (key == SDLK_r) {
+                } else if (key == SDLK_q) {
+                    reset_to_title(&game);
+                } else if (key == SDLK_r && !game.title_screen) {
                     reset_game(&game);
                 } else if (game.title_screen && key == SDLK_SPACE) {
                     reset_game(&game);
