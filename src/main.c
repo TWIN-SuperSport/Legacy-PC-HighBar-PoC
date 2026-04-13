@@ -11,6 +11,10 @@
 #define UI_Y 24
 #define PIVOT_X 4
 #define PIVOT_Y 14
+#define CELLS_PER_METER 10
+#define DISTANCE_MARK_STEP_METERS 5
+#define DISTANCE_MARK_STEP_CELLS (CELLS_PER_METER * DISTANCE_MARK_STEP_METERS)
+#define CAMERA_TRIGGER_X (SCREEN_WIDTH - 2)
 
 typedef enum {
     STATE_READY = 0,
@@ -33,6 +37,7 @@ typedef struct {
     double vx;
     double vy;
     double landed_distance;
+    double camera_x;
     char message[80];
 } GameState;
 
@@ -55,6 +60,21 @@ static void update_attached_position(GameState *game) {
     game->y = PIVOT_Y + cos(game->theta) * game->radius;
 }
 
+static int world_to_screen_x(double world_x, double camera_x) {
+    return (int)lround(world_x - camera_x);
+}
+
+static void update_camera(GameState *game) {
+    double next_camera = game->x - CAMERA_TRIGGER_X;
+
+    if (next_camera < 0.0) {
+        next_camera = 0.0;
+    }
+    if (next_camera > game->camera_x) {
+        game->camera_x = next_camera;
+    }
+}
+
 static void reset_game(GameState *game) {
     memset(game, 0, sizeof(*game));
     game->mode = STATE_READY;
@@ -64,6 +84,7 @@ static void reset_game(GameState *game) {
     game->theta = 0.0;
     game->omega = 0.0;
     game->radius = 2.0;
+    game->camera_x = 0.0;
     update_attached_position(game);
     set_message(game, "SPACE spin/release. R reset. Q title.");
 }
@@ -82,10 +103,124 @@ static void release_flyer(GameState *game) {
     set_message(game, "FLY!");
 }
 
-static void draw_ground(Screen *screen) {
+static void draw_ground(Screen *screen, const GameState *game) {
+    int distance_cells;
+
     for (int x = 0; x < SCREEN_WIDTH; ++x) {
         screen_put_char(screen, x, GROUND_Y, '#', COLOR_GREEN, COLOR_BLACK, 0);
     }
+
+    for (distance_cells = DISTANCE_MARK_STEP_CELLS;; distance_cells += DISTANCE_MARK_STEP_CELLS) {
+        char label[16];
+        int marker_world_x = PIVOT_X + distance_cells;
+        int marker_screen_x = world_to_screen_x(marker_world_x, game->camera_x);
+        int label_x;
+
+        if (marker_screen_x >= SCREEN_WIDTH + 6) {
+            break;
+        }
+        if (marker_screen_x < -6) {
+            continue;
+        }
+
+        snprintf(label, sizeof(label), "[%dm]", distance_cells / CELLS_PER_METER);
+        label_x = marker_screen_x - (int)strlen(label) / 2;
+
+        screen_put_string(screen, label_x, GROUND_Y, label, COLOR_YELLOW, COLOR_BLACK, 0);
+    }
+}
+
+static const char *big_glyph_row(char ch, int row) {
+    static const char *blank[5] = {
+        "     ", "     ", "     ", "     ", "     "
+    };
+    static const char *dot[5] = {
+        "     ", "     ", "     ", " ### ", " ### "
+    };
+    static const char *m[5] = {
+        "     ", "## ##", "# # #", "# # #", "     "
+    };
+    static const char *digit_0[5] = {
+        " ### ", "#   #", "#   #", "#   #", " ### "
+    };
+    static const char *digit_1[5] = {
+        "  #  ", " ##  ", "  #  ", "  #  ", " ### "
+    };
+    static const char *digit_2[5] = {
+        " ### ", "#   #", "   # ", "  #  ", "#####"
+    };
+    static const char *digit_3[5] = {
+        "#### ", "    #", " ### ", "    #", "#### "
+    };
+    static const char *digit_4[5] = {
+        "#   #", "#   #", "#####", "    #", "    #"
+    };
+    static const char *digit_5[5] = {
+        "#####", "#    ", "#### ", "    #", "#### "
+    };
+    static const char *digit_6[5] = {
+        " ### ", "#    ", "#### ", "#   #", " ### "
+    };
+    static const char *digit_7[5] = {
+        "#####", "    #", "   # ", "  #  ", " #   "
+    };
+    static const char *digit_8[5] = {
+        " ### ", "#   #", " ### ", "#   #", " ### "
+    };
+    static const char *digit_9[5] = {
+        " ### ", "#   #", " ####", "    #", " ### "
+    };
+
+    switch (ch) {
+        case '0': return digit_0[row];
+        case '1': return digit_1[row];
+        case '2': return digit_2[row];
+        case '3': return digit_3[row];
+        case '4': return digit_4[row];
+        case '5': return digit_5[row];
+        case '6': return digit_6[row];
+        case '7': return digit_7[row];
+        case '8': return digit_8[row];
+        case '9': return digit_9[row];
+        case '.': return dot[row];
+        case 'm': return m[row];
+        default: return blank[row];
+    }
+}
+
+static int get_big_text_width(const char *text) {
+    int glyph_width = 5;
+    int spacing = 1;
+
+    if (text == NULL || text[0] == '\0') {
+        return 0;
+    }
+
+    return ((int)strlen(text) * (glyph_width + spacing)) - spacing;
+}
+
+static void draw_big_text(Screen *screen, int start_x, int top_y, const char *text, unsigned char fg, unsigned char bg) {
+    int glyph_width = 5;
+    int spacing = 1;
+    int row;
+
+    if (text == NULL || text[0] == '\0') {
+        return;
+    }
+
+    for (row = 0; row < 5; ++row) {
+        int i;
+
+        for (i = 0; text[i] != '\0'; ++i) {
+            int x = start_x + i * (glyph_width + spacing);
+            screen_put_string(screen, x, top_y + row, big_glyph_row(text[i], row), fg, bg, 0);
+        }
+    }
+}
+
+static void draw_big_text_centered(Screen *screen, int top_y, const char *text, unsigned char fg, unsigned char bg) {
+    int start_x = (SCREEN_WIDTH - get_big_text_width(text)) / 2;
+    draw_big_text(screen, start_x, top_y, text, fg, bg);
 }
 
 static void draw_title(Screen *screen) {
@@ -116,13 +251,17 @@ static void draw_start_blink(Screen *screen, Uint32 started_at) {
     }
 }
 
-static void draw_highbar(Screen *screen) {
-    screen_put_char(screen, PIVOT_X, PIVOT_Y, 'O', COLOR_YELLOW, COLOR_BLACK, 0);
+static void draw_highbar(Screen *screen, const GameState *game) {
+    int screen_x = world_to_screen_x(PIVOT_X, game->camera_x);
+
+    if (screen_x >= 0 && screen_x < SCREEN_WIDTH) {
+        screen_put_char(screen, screen_x, PIVOT_Y, 'O', COLOR_YELLOW, COLOR_BLACK, 0);
+    }
 }
 
 static void draw_flyer(Screen *screen, const GameState *game) {
     if (game->mode == STATE_FLYING || game->mode == STATE_LANDED) {
-        int body_x = (int)lround(game->x);
+        int body_x = world_to_screen_x(game->x, game->camera_x);
         int body_y1 = (int)lround(game->y);
         int body_y2 = body_y1 + 1;
         static const char *flip_frames[] = { "_|", "/\\", "|_", "\\/" };
@@ -198,7 +337,7 @@ static void draw_flyer(Screen *screen, const GameState *game) {
     }
 
     for (int segment = 1; segment <= 2; ++segment) {
-        int px = PIVOT_X + dx * segment;
+        int px = world_to_screen_x(PIVOT_X + dx * segment, game->camera_x);
         int py = PIVOT_Y + dy * segment;
         if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < GROUND_Y) {
             screen_put_char(screen, px, py, ch, COLOR_WHITE, COLOR_BLACK, 0);
@@ -207,17 +346,26 @@ static void draw_flyer(Screen *screen, const GameState *game) {
 }
 
 static void draw_scene(Screen *screen, const GameState *game) {
-    char ui[128];
+    char ui[192];
 
     screen_clear(screen, ' ', COLOR_LIGHTGRAY, COLOR_BLACK, 0);
-    draw_ground(screen);
-    draw_highbar(screen);
+    draw_ground(screen, game);
+    draw_highbar(screen, game);
     draw_flyer(screen, game);
 
     if (game->mode == STATE_LANDED) {
-        char result[80];
-        snprintf(result, sizeof(result), "DISTANCE: %.2fm  PRESS R TO RETRY", game->landed_distance / 10.0);
-        screen_put_string(screen, 18, 2, result, COLOR_YELLOW, COLOR_BLACK, 0);
+        char result[16];
+        int result_width;
+        int result_x;
+
+        snprintf(result, sizeof(result), "%.2f", game->landed_distance / 10.0);
+        result_width = get_big_text_width(result);
+        result_x = (SCREEN_WIDTH - result_width) / 2;
+
+        screen_put_string_center(screen, 3, "DISTANCE", COLOR_LIGHTCYAN, COLOR_BLACK, 0);
+        draw_big_text(screen, result_x, 6, result, COLOR_YELLOW, COLOR_BLACK);
+        draw_big_text(screen, result_x + result_width + 3, 7, "m", COLOR_YELLOW, COLOR_BLACK);
+        screen_put_string_center(screen, 12, "PRESS R TO RETRY", COLOR_YELLOW, COLOR_BLACK, 0);
     }
 
     snprintf(
@@ -234,7 +382,7 @@ static void draw_scene(Screen *screen, const GameState *game) {
 static void update_game(GameState *game, double dt) {
     const double angular_accel = 8.0;
     const double angular_damping = 0.998;
-    const double max_omega = 25.0;
+    const double max_omega = 50.0;
     const double gravity = 16.0;
 
     if (game->mode == STATE_READY) {
@@ -266,6 +414,7 @@ static void update_game(GameState *game, double dt) {
         game->x += game->vx * dt;
         game->y += game->vy * dt;
         game->vy += gravity * dt;
+        update_camera(game);
 
         if (game->y >= GROUND_Y - 2) {
             game->y = GROUND_Y - 2;
@@ -276,8 +425,6 @@ static void update_game(GameState *game, double dt) {
 
         if (game->x < 0.0) {
             game->x = 0.0;
-        } else if (game->x > (double)(SCREEN_WIDTH - 1)) {
-            game->x = (double)(SCREEN_WIDTH - 1);
         }
     }
 }
