@@ -13,11 +13,14 @@
 - Web 版では `SDL_KEYDOWN` 経由の入力が安定しなかった。
 - そのため `SPACE` `R` `Q` は、`index.html` 側の `keydown` から `Module.ccall('web_key_event', ...)` で C 側へ直接渡す形に変更した。
 - `SDL_PollEvent()` 側では `SDL_QUIT` だけを残し、キー入力の二重処理を避けた。
+- その後、iPhone / Android 系の touch-like browser 向けに、画面下部へ `[SPACE] [R] [Q]` の簡易キー UI を追加した。
+- `Q` はタイトル画面へ戻る挙動に変更し、`Esc` は終了として残した。
 
 ## 表示の安定化
 - iPhone の `RDP` 経由では、canvas の縮小表示で文字欠けが発生した。
 - 対応として、Web 側で整数倍率ベースのスケーリングへ変更した。
 - 最終的には Web 版のフォントサイズを `13` に落とすことで、iPhone `RDP` 上でも収まりが改善した。
+- iPhone Chrome では更新後 HTML / JS の cache が強く残るケースがあったため、確認時は no-cache 配信で切り分けを行った。
 
 ## 表示倍率 UI
 - 上部に `Display scale` UI を追加した。
@@ -31,5 +34,6 @@
 - Ubuntu ローカルブラウザで動作確認済み。
 - iPhone `RDP` 経由でも表示倍率を調整すればプレイ可能。
 - 試験公開先 `https://supersport-life.upper.jp/` でも動作確認済み。
+- iPhone の Safari / Chrome でも、touch-like browser 向け簡易キー UI により操作可能な状態まで持っていった。
 - 配信物は `index.html`, `highbar.js`, `highbar.wasm`, `highbar.data` の 4 ファイルを同一ディレクトリへ置く形で成立した。
 - 現時点の Web 版実装は、一時配置からの運用であり、本 repo への本格統合は今後の検討事項。
